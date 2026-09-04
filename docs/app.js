@@ -953,11 +953,23 @@ fetch('dashboard.json?' + Date.now())
       `${d.session_count} sessions · ${d.symbols.length} symbols · ${d.tracking_sessions} price-tracking days · latest ${d.latest_session || '—'}`
       + (src ? ` · <a href="${src}" target="_blank" rel="noopener">source</a>` : '');
 
+    // The published demo lives at /demo/ and reuses these same assets with its
+    // own frozen dataset, so the two pages never drift apart visually.
+    const isDemo = location.pathname.replace(/\/+$/, '').endsWith('/demo');
+    $('#meta').innerHTML += isDemo
+      ? ' · <a href="../">← live dashboard</a>'
+      : ' · <a href="demo/">demo with full history →</a>';
+
     if (d.demo_sessions > 0) {
       const b = $('#banner');
-      b.innerHTML = `<span>⚠</span><span><b>${d.demo_sessions} of ${d.session_count} sessions are synthetic demo data</b>`
-        + ` — for layout review only. ${d.real_sessions} real capture${d.real_sessions === 1 ? '' : 's'}.`
-        + ` Remove with <code>npm run demo:clear</code>.</span>`;
+      b.innerHTML = isDemo
+        ? `<span>⚠</span><span><b>Demo data — not real screener history.</b>`
+          + ` ${d.demo_sessions} synthetic sessions, generated once so the dashboard can be`
+          + ` explored with a full dataset. Prices are anchored to real quotes but the`
+          + ` history is fabricated. <a href="../">The live dashboard is here</a>.</span>`
+        : `<span>⚠</span><span><b>${d.demo_sessions} of ${d.session_count} sessions are synthetic demo data</b>`
+          + ` — for layout review only. ${d.real_sessions} real capture${d.real_sessions === 1 ? '' : 's'}.`
+          + ` Remove with <code>npm run demo:clear</code>.</span>`;
       b.hidden = false;
     }
 

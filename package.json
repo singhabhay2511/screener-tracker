@@ -12,7 +12,8 @@
     "demo:clear": "node scripts/seed-demo.mjs --clear && node scripts/build-dashboard.mjs",
     "serve": "node scripts/serve.mjs",
     "track": "node scripts/track.mjs",
-    "daily": "node scripts/capture.mjs && node scripts/track.mjs && node scripts/build-dashboard.mjs"
+    "daily": "node scripts/capture.mjs && node scripts/track.mjs && node scripts/build-dashboard.mjs",
+    "demo:publish": "node scripts/seed-demo.mjs && node scripts/build-dashboard.mjs && node -e \"require(fs=`fs`).copyFileSync(`docs/dashboard.json`,`docs/demo/dashboard.json`)\" && node scripts/seed-demo.mjs --clear && node scripts/build-dashboard.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

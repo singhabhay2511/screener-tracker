@@ -1,8 +1,16 @@
 # Screener Tracker
 
 **Live dashboard → https://singhabhay2511.github.io/screener-tracker/**
+**Demo with full history → https://singhabhay2511.github.io/screener-tracker/demo/**
 
-The dashboard is a public page: anyone with that link can view it, no GitHub account needed.
+Both are public pages: anyone with the link can view them, no GitHub account needed.
+The demo carries a frozen synthetic dataset so the dashboard can be explored before
+real history accumulates. It reuses the live page assets, so the two never drift apart.
+
+Settings are per-viewer (`localStorage`), so anyone can retune every parameter without
+affecting the page or any other viewer.
+
+
 
 Snapshots the TradingView screener [**4% Scan**](https://www.tradingview.com/screener/0mdQWH3o/)
 after every NSE session and tracks **which stocks keep reappearing, and on which dates**.
@@ -164,6 +172,8 @@ on repos with 60 days of no activity, which this repo can never hit.
 ## Local use
 
 ```bash
+npm run serve                      # live at :8080, demo at :8080/demo/
+npm run demo:publish               # regenerate docs/demo/dashboard.json
 node scripts/capture.mjs           # snapshot today
 node scripts/capture.mjs --force   # ignore weekend/holiday/stale guards
 node scripts/capture.mjs --date 2026-09-04
