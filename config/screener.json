@@ -1,0 +1,26 @@
+{
+  "name": "4% Scan",
+  "sourceUrl": "https://www.tradingview.com/screener/0mdQWH3o/",
+  "endpoint": "https://scanner.tradingview.com/india/scan",
+  "markets": ["india"],
+
+  "_comment": "Single source of truth for the screener definition. The weekly drift check compares this against the live saved screener. If you change the screener in TradingView, update this file to match.",
+
+  "filter": [
+    { "left": "close",            "operation": "greater",  "right": 10,                            "_ui": "Price > 10 INR" },
+    { "left": "change",           "operation": "greater",  "right": 4,                             "_ui": "Chg > 4%" },
+    { "left": "market_cap_basic", "operation": "in_range", "right": [5000000000, 100000000000],    "_ui": "Mkt cap 5B to 100B INR" },
+    { "left": "exchange",         "operation": "equal",    "right": "NSE",                         "_ui": "NSE" },
+    { "left": "volume_change",    "operation": "greater",  "right": 300,                           "_ui": "Vol chg > 300%" },
+    { "left": "Value.Traded",     "operation": "greater",  "right": 100000000,                     "_ui": "Price x vol > 100M INR" }
+  ],
+
+  "columns": [
+    "name", "description", "close", "change", "volume",
+    "relative_volume_10d_calc", "market_cap_basic", "price_earnings_ttm",
+    "earnings_per_share_diluted_ttm", "sector", "Value.Traded", "volume_change"
+  ],
+
+  "sort": { "sortBy": "change", "sortOrder": "desc" },
+  "maxRows": 300
+}

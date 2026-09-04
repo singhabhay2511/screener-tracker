@@ -1,0 +1,20 @@
+{
+  "name": "tv-screener-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Daily snapshots of a TradingView screener, tracking which stocks recur and when.",
+  "scripts": {
+    "capture": "node scripts/capture.mjs",
+    "build": "node scripts/build-dashboard.mjs",
+    "drift": "node scripts/drift-check.mjs",
+    "demo": "node scripts/seed-demo.mjs && node scripts/build-dashboard.mjs",
+    "demo:clear": "node scripts/seed-demo.mjs --clear && node scripts/build-dashboard.mjs",
+    "serve": "node scripts/serve.mjs",
+    "track": "node scripts/track.mjs",
+    "daily": "node scripts/capture.mjs && node scripts/track.mjs && node scripts/build-dashboard.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

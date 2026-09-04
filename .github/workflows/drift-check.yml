@@ -1,0 +1,54 @@
+name: Weekly drift check
+
+on:
+  schedule:
+    # Saturdays 06:00 UTC. Compares the API replica against the live saved
+    # screener so an edit in TradingView cannot silently corrupt the dataset.
+    - cron: '0 6 * * 6'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: npm install --no-save playwright@^1.49.0
+      - run: npx playwright install --with-deps chromium
+
+      - name: Compare replica against live screener
+        id: check
+        continue-on-error: true
+        run: node scripts/drift-check.mjs
+
+      - name: Raise an issue if drifted
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --label screener-drift --state open --json number --jq 'length')
+          if [ "$existing" -gt 0 ]; then
+            echo "drift issue already open, appending comment"
+            num=$(gh issue list --label screener-drift --state open --json number --jq '.[0].number')
+            gh issue comment "$num" --body-file drift-report.md
+          else
+            gh label create screener-drift --color D93F0B --description "Screener replica out of sync" 2>/dev/null || true
+            gh issue create \
+              --title "Screener drift detected — config/screener.json needs updating" \
+              --label screener-drift \
+              --body-file drift-report.md
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: drift-report
+          path: drift-report.md

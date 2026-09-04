@@ -1,0 +1,175 @@
+# Screener Tracker
+
+Snapshots the TradingView screener [**4% Scan**](https://www.tradingview.com/screener/0mdQWH3o/)
+after every NSE session and tracks **which stocks keep reappearing, and on which dates**.
+
+Runs entirely on GitHub Actions + GitHub Pages. No server, no database, no cost.
+
+---
+
+## How it works
+
+```
+17:00 IST, Mon–Fri     capture.mjs   → data/snapshots/YYYY-MM-DD.json   (raw, immutable)
+                       build-dashboard.mjs → docs/dashboard.json        (derived)
+                       git commit + Pages deploy
+
+Saturdays 06:00 UTC    drift-check.mjs → opens an issue if the screener was edited
+```
+
+The daily job posts the screener definition to TradingView's public scanner endpoint
+(`scanner.tradingview.com/india/scan`). No login, no browser, ~200 ms.
+
+### Design rule: store snapshots, never aggregates
+
+Each trading day is one immutable JSON file. Appearance counts, streaks, first/last
+seen and heat scores are **recomputed from scratch** on every build. Nothing is kept
+as a running counter.
+
+This is what makes the dataset trustworthy. Change the window from 30 to 90 sessions,
+backfill a missed day, or fix a bad run, and every figure stays correct. A stored
+counter would be a number you could never audit or unwind.
+
+---
+
+## The three guards
+
+A dataset like this is only as good as its worst day. Three things are enforced:
+
+| Guard | Protects against |
+|---|---|
+| **Truncation check** | `capture.mjs` throws if `totalCount` exceeds `maxRows`. A partial day is never recorded as a complete one. |
+| **Stale fingerprint** | On a holiday TradingView replays the previous session verbatim. An identical symbol+close+volume fingerprint means the market didn't trade, so the day is skipped rather than granting every stock a phantom appearance. |
+| **Status log** | `data/runs.csv` records `ok` / `error` / `skipped_*` separately, so "the job broke" is never mistaken for "nothing qualified today". |
+
+The holiday list in `config/nse-holidays.json` is a *speed* optimisation only — it's
+empty by default and the fingerprint guard catches holidays regardless.
+
+---
+
+## Drift detection
+
+The daily job runs a **replica** of the screener defined in `config/screener.json`.
+If you edit the screener in TradingView, that replica silently diverges and your
+history quietly becomes two incompatible datasets.
+
+So once a week, `drift-check.mjs` loads the real saved screener in Playwright,
+scrolls the virtualised table to the bottom, and compares its symbol set against
+the API replica. On any mismatch it opens a GitHub issue listing exactly which
+symbols differ.
+
+**When that issue appears:** open the screener, read the filter chips, and update
+`config/screener.json` to match.
+
+---
+
+## Current screener definition
+
+| Screener chip | `config/screener.json` |
+|---|---|
+| Price > 10 INR | `close > 10` |
+| Chg > 4% | `change > 4` |
+| Mkt cap 5B–100B INR | `market_cap_basic in_range [5e9, 1e11]` |
+| NSE | `exchange = NSE` |
+| Vol chg > 300% | `volume_change > 300` |
+| Price × vol > 100M INR | `Value.Traded > 1e8` |
+
+Verified: this replica returns the identical 24 symbols the saved screener displays.
+
+---
+
+## Dashboard
+
+| View | What it answers |
+|---|---|
+| **Session** | Any session's matches, badged `NEW` / `BACK` / `4× in 10` / `streak 3`. Date is a dropdown. |
+| **Leaderboard** | Who recurs most, over a selectable window, with sector rank and base status per row. |
+| **Bases** | Stocks that surged then went quiet, ranked by how constructively they are consolidating. |
+| **Heat grid** | Top 30 symbols × sessions. Click a filled cell to jump to that session. |
+| **Sectors** | Sector strength over 30 sessions. Click a row to expand its stocks, counts and dates. |
+
+Every KPI card, sector chip, badge and grid cell is a filter. Active filters show as
+removable chips and apply across all views.
+
+### Navigation
+
+Two different interactions, deliberately kept distinct:
+
+- **KPI cards filter in place.** Clicking *First-timers*, *Repeats* or *In hot sectors*
+  narrows the table already on screen and highlights the card. It never switches tabs,
+  so there is no trip back. Click again to clear.
+- **Real jumps push history.** The few actions that genuinely change view — a heat-grid
+  cell opening its session, "filter everything to this sector" — push a history entry,
+  and a `← Back` button appears.
+
+All state lives in the URL hash (`#v=leaderboard&f.sector=Finance`), so the browser's
+own Back and Forward work, a refresh keeps you where you were, and any view you reach
+can be bookmarked or shared.
+
+### Base detection
+
+The screener only fires on surge days, so on its own it can never tell you what
+happened afterwards. `track.mjs` fixes that: every day it pulls close, SMA20,
+SMA50, ATR and relative volume for **every symbol ever seen**, whether or not it
+qualified. Those quiet days are what make base detection and
+"% since first appearance" possible.
+
+The base score is a weighted blend of five components, each shown in the UI so
+you can see *why* something scored as it did:
+
+| Component | Weight | Reads well when |
+|---|---|---|
+| Pullback depth | 30% | shallow off the surge; a runaway or a >25% break scores low |
+| Range tightness | 20% | 10-session range under ~8% |
+| Position vs MAs | 20% | above SMA20, partially above SMA50 |
+| Volume dry-up | 15% | relative volume under ~0.7 |
+| Time elapsed | 15% | 3–30 sessions since the surge |
+
+Components that cannot be computed yet (tightness needs 5+ tracking days) are
+excluded and the remaining weights renormalise, so early scores stay honest
+rather than being quietly penalised.
+
+**This is a shortlisting heuristic, not a signal.** It ranks what to look at, and
+nothing more — it has no view on whether a base resolves up or down.
+
+### On ranking
+
+The default sort is **heat**, not lifetime count — a recency-weighted score
+(15-session decay). Raw appearance totals get dominated by names in long grinding
+uptrends that print 4% moves routinely. Four appearances in eight sessions is a
+much stronger signal than twelve spread across a year. Sort by `Hits` if you want
+the plain count.
+
+---
+
+## Setup
+
+1. Push this repo to GitHub.
+2. **Settings → Pages → Source: GitHub Actions.**
+3. **Settings → Actions → General → Workflow permissions: Read and write.**
+4. Run **Actions → Daily capture → Run workflow** once to confirm it works.
+
+The daily commit also keeps the scheduled workflows alive — GitHub disables cron
+on repos with 60 days of no activity, which this repo can never hit.
+
+## Local use
+
+```bash
+node scripts/capture.mjs           # snapshot today
+node scripts/capture.mjs --force   # ignore weekend/holiday/stale guards
+node scripts/capture.mjs --date 2026-09-04
+node scripts/build-dashboard.mjs   # regenerate docs/dashboard.json
+```
+
+Then open `docs/index.html` through any static server.
+
+---
+
+## Known limits
+
+- **No backfill.** TradingView exposes no screener history. Tracking starts the day
+  the job first runs.
+- **GitHub cron drifts.** Scheduled runs can fire several minutes late under load.
+  Harmless — NSE closes at 15:30, so the 17:00 data is already settled.
+- **Unofficial endpoint.** The scanner API is undocumented and could change without
+  notice. The daily job fails loudly rather than silently if it does.

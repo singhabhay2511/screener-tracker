@@ -1,0 +1,4 @@
+{
+  "_comment": "Optional fast-path skip list of NSE trading holidays (YYYY-MM-DD). This is an OPTIMISATION, not the safety mechanism -- capture.mjs independently detects non-trading days via the stale-fingerprint guard, so an out-of-date list here cannot corrupt the dataset. Populate from the official NSE holiday circular.",
+  "holidays": []
+}

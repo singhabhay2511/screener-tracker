@@ -1,0 +1,5 @@
+run_date,status,row_count,fingerprint,captured_at_ist,detail
+2026-09-04,ok,24,c1fa88ef6e528ae3,"2026-09-04 22:14:08",""
+2026-09-06,skipped_weekend,,,"","not a weekday in IST"
+2026-09-04,ok,24,c1fa88ef6e528ae3,"2026-09-04 22:48:13",""
+2026-09-06,skipped_weekend,,,"","not a weekday in IST"
