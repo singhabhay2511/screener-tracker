@@ -102,6 +102,8 @@ Verified: this replica returns the identical 24 symbols the saved screener displ
 | **Heat grid** | Top 30 symbols × sessions. Click a filled cell to jump to that session. |
 | **Sectors** | Sector strength over 30 sessions. Click a row to expand its stocks, counts and dates. |
 
+Every symbol carries a chart icon linking straight to its TradingView chart, in a new tab.
+
 Every KPI card, sector chip, badge and grid cell is a filter. Active filters show as
 removable chips and apply across all views.
 

@@ -55,6 +55,19 @@ function sectorChip(sector, rank, tier, of) {
     title="${esc(sector)} — rank ${rank || '?'} of ${of || '?'} by appearances over ${CFG.sector.window} sessions">${esc(sector)}${r}</span>`;
 }
 
+/**
+ * Deep-link to the symbol's TradingView chart. Opens in a new tab and is
+ * excluded from the row click that opens the detail drawer.
+ */
+function tvLink(ticker) {
+  const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(ticker)}`;
+  return `<a class="tv" href="${url}" target="_blank" rel="noopener noreferrer"
+    title="Open ${esc(ticker)} chart on TradingView" aria-label="Open ${esc(ticker)} chart on TradingView"
+    ><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor"
+      stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+      ><path d="M2.2 11.2 6 7l2.8 2.4L13.6 4.4"/><path d="M10.2 4.4h3.4v3.4"/></svg></a>`;
+}
+
 function baseChip(base) {
   if (!base) return '<span class="muted">—</span>';
   return `<span class="bchip ${BASE_CLASS[base.status] || ''}" data-filter="base" data-value="${esc(base.status)}"
@@ -243,7 +256,7 @@ function renderFocus() {
 
   const row = (e, showDismiss = true) => `
     <tr data-ticker="${esc(e.s.ticker)}">
-      <td class="sym"><b>${esc(e.s.symbol)}</b><span class="desc">${esc(e.s.name)}</span></td>
+      <td class="sym"><b>${esc(e.s.symbol)}</b>${tvLink(e.s.ticker)}<span class="desc">${esc(e.s.name)}</span></td>
       <td class="sym reasons">${e.reasons.map((r) => `<span class="rchip">${esc(r)}</span>`).join('')}</td>
       <td class="sym">${baseChip(e.s.base)}</td>
       <td class="hits"><b>${e.s.counts[10] || 0}</b><span class="unit">/10</span>
@@ -385,7 +398,7 @@ function renderSession() {
   </tr></thead><tbody>
   ${shown.map((r) => `
     <tr data-ticker="${esc(r.ticker)}">
-      <td class="sym"><b>${esc(r.symbol)}</b>${badges(r)}<span class="desc">${esc(r.name)}</span></td>
+      <td class="sym"><b>${esc(r.symbol)}</b>${tvLink(r.ticker)}${badges(r)}<span class="desc">${esc(r.name)}</span></td>
       <td>${num(r.close)}</td>
       <td class="${cls(r.change_pct)}">${pct(r.change_pct)}</td>
       <td class="${cls(r.since_first_pct)}">${pct(r.since_first_pct)}</td>
@@ -439,7 +452,7 @@ function renderLeaderboard() {
   </tr></thead><tbody>
   ${rows.map((s) => `
     <tr data-ticker="${esc(s.ticker)}">
-      <td class="sym"><b>${esc(s.symbol)}</b>${badges(s)}<span class="desc">${esc(s.name)}</span></td>
+      <td class="sym"><b>${esc(s.symbol)}</b>${tvLink(s.ticker)}${badges(s)}<span class="desc">${esc(s.name)}</span></td>
       <td><b>${s.count}</b></td>
       <td>${num(s.heat, 2)}</td>
       <td>${s.streak || '—'}</td>
@@ -531,7 +544,7 @@ function renderBases() {
   ${rows.map((s) => {
     const p = s.base.parts;
     return `<tr data-ticker="${esc(s.ticker)}">
-      <td class="sym"><b>${esc(s.symbol)}</b><span class="desc">${esc(s.name)}</span></td>
+      <td class="sym"><b>${esc(s.symbol)}</b>${tvLink(s.ticker)}<span class="desc">${esc(s.name)}</span></td>
       <td><b class="score">${s.base.score ?? '—'}</b></td>
       <td class="sym">${baseChip(s.base)}</td>
       <td>${s.sessions_since}</td>
@@ -559,7 +572,7 @@ function renderGrid() {
   </tr></thead><tbody>
   ${pool.map((s) => {
     const set = new Set(s.hits.map((h) => h.date));
-    return `<tr><th class="s" data-ticker="${esc(s.ticker)}">${esc(s.symbol)}</th>
+    return `<tr><th class="s" data-ticker="${esc(s.ticker)}">${esc(s.symbol)}${tvLink(s.ticker)}</th>
       ${days.map((d) => set.has(d)
         ? `<td><div class="cell on" data-session="${d}" title="${esc(s.symbol)} · ${d}"></div></td>`
         : `<td><div class="cell"></div></td>`).join('')}
@@ -617,7 +630,7 @@ function renderSectors() {
           <th class="sym">Symbol</th><th>Hits</th><th>Last seen</th><th>Since 1st</th><th class="sym">Base</th><th class="sym">Dates</th>
         </tr></thead><tbody>
         ${members.map((s) => `<tr data-ticker="${esc(s.ticker)}">
-          <td class="sym"><b>${esc(s.symbol)}</b></td>
+          <td class="sym"><b>${esc(s.symbol)}</b>${tvLink(s.ticker)}</td>
           <td><b>${s.counts.all}</b></td>
           <td>${s.last_seen}</td>
           <td class="${cls(s.since_first_pct)}">${pct(s.since_first_pct)}</td>
@@ -643,7 +656,7 @@ function openDrawer(ticker) {
     <td class="sym muted">${note}</td></tr>`;
 
   $('#drawer-body').innerHTML = `
-    <h2>${esc(s.symbol)} ${badges(s)}</h2>
+    <h2>${esc(s.symbol)}${tvLink(s.ticker)} ${badges(s)}</h2>
     <p class="sub">${esc(s.name || '')} · ${sectorChip(s.sector, s.sector_rank, s.sector_tier, s.sector_of)}</p>
     <div class="cards">
       <div class="card"><div class="k">Appearances</div><div class="v">${s.counts.all}<span class="hint">of ${D.session_count}</span></div></div>
@@ -838,6 +851,9 @@ document.addEventListener('toggle', (ev) => {
 
 // One delegated handler for every interactive element.
 document.addEventListener('click', (ev) => {
+  // Let real links do their thing — a chart link must not also open the drawer.
+  if (ev.target.closest('a[href]')) return;
+
   if (ev.target.closest('[data-back]')) return history.back();
 
   if (ev.target.closest("[data-cfg-reset-all]")) {
