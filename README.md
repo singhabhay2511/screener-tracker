@@ -153,7 +153,9 @@ Already live. The only repo setting that must be right:
 **Settings → Actions → General → Workflow permissions → Read and write permissions.**
 The daily job commits its snapshot, so without this the capture runs but cannot save.
 
-Pages enables itself on the first workflow run (`enablement: true` on `configure-pages`).
+**Settings → Pages → Source: GitHub Actions.**
+This one is a genuine manual step — `GITHUB_TOKEN` is not allowed to create a Pages
+site, so `enablement: true` fails with "Resource not accessible by integration".
 
 The daily commit also keeps the scheduled workflows alive — GitHub disables cron
 on repos with 60 days of no activity, which this repo can never hit.
