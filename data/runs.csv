@@ -7,3 +7,4 @@ run_date,ran_on,status,row_count,fingerprint,captured_at_ist,detail
 2026-09-05,2026-09-05,skipped_weekend,,,"","not a weekday in IST"
 2026-09-04,2026-09-05,skipped_no_new_session,,,"","latest NSE session is still 2026-09-04, already recorded (today is 2026-09-05)"
 2026-09-04,2026-09-05,ok,24,c1fa88ef6e528ae3,"2026-09-05 00:53:54","captured on 2026-09-05"
+2026-09-04,2026-09-05,skipped_no_new_session,,,"","latest NSE session is still 2026-09-04, already recorded (today is 2026-09-05)"
