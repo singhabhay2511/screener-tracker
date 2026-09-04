@@ -75,6 +75,10 @@ jobs:
         with:
           ref: main
       - uses: actions/configure-pages@v5
+        with:
+          # Creates the Pages site on the first run, so there is no manual
+          # "Settings -> Pages" step to remember.
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs

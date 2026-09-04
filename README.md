@@ -1,5 +1,9 @@
 # Screener Tracker
 
+**Live dashboard → https://singhabhay2511.github.io/screener-tracker/**
+
+The dashboard is a public page: anyone with that link can view it, no GitHub account needed.
+
 Snapshots the TradingView screener [**4% Scan**](https://www.tradingview.com/screener/0mdQWH3o/)
 after every NSE session and tracks **which stocks keep reappearing, and on which dates**.
 
@@ -144,10 +148,12 @@ the plain count.
 
 ## Setup
 
-1. Push this repo to GitHub.
-2. **Settings → Pages → Source: GitHub Actions.**
-3. **Settings → Actions → General → Workflow permissions: Read and write.**
-4. Run **Actions → Daily capture → Run workflow** once to confirm it works.
+Already live. The only repo setting that must be right:
+
+**Settings → Actions → General → Workflow permissions → Read and write permissions.**
+The daily job commits its snapshot, so without this the capture runs but cannot save.
+
+Pages enables itself on the first workflow run (`enablement: true` on `configure-pages`).
 
 The daily commit also keeps the scheduled workflows alive — GitHub disables cron
 on repos with 60 days of no activity, which this repo can never hit.
