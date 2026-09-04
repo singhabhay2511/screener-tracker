@@ -22,6 +22,7 @@ Runs entirely on GitHub Actions + GitHub Pages. No server, no database, no cost.
 ## How it works
 
 ```
+push to main          deploys docs/ to Pages immediately
 17:00 IST, EVERY day   capture.mjs   → data/snapshots/YYYY-MM-DD.json   (raw, immutable)
                        build-dashboard.mjs → docs/dashboard.json        (derived)
                        git commit + Pages deploy

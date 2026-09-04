@@ -66,6 +66,10 @@ jobs:
   deploy:
     needs: capture
     runs-on: ubuntu-latest
+    # Shared with the push-triggered pages.yml so the two never deploy at once.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     permissions:
       pages: write
       id-token: write
