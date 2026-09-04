@@ -184,3 +184,51 @@ export function loadTracking() {
     .sort()
     .map((f) => JSON.parse(readFileSync(join(TRACK_DIR, f), 'utf8')));
 }
+
+/**
+ * The market's own idea of the latest trading date.
+ *
+ * The scanner's `time` column is the last DAILY BAR's open timestamp -- on NSE
+ * that is 09:15 IST of the most recent session. So on a Saturday, a holiday, or
+ * any unscheduled closure it still reports the previous trading day, which is
+ * exactly what we need: the data itself says whether a new session exists.
+ *
+ * This is authoritative in a way a calendar never is. It needs no holiday list,
+ * it survives unscheduled closures, and it correctly picks up special sessions
+ * (Muhurat trading falls on days a weekday check would skip).
+ *
+ * Several liquid references are queried and the newest bar wins, so one
+ * suspended or halted symbol cannot drag the answer backwards.
+ */
+const MARKET_DATE_REFS = [
+  'NSE:RELIANCE', 'NSE:TCS', 'NSE:HDFCBANK', 'NSE:INFY', 'NSE:ICICIBANK', 'NSE:SBIN',
+];
+
+export async function fetchMarketDate(cfg) {
+  const res = await fetch(cfg.endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      symbols: { tickers: MARKET_DATE_REFS, query: { types: [] } },
+      columns: ['name', 'time'],
+    }),
+  });
+  if (!res.ok) throw new Error(`market-date probe returned HTTP ${res.status}`);
+
+  const json = await res.json();
+  const times = (json.data ?? []).map((r) => r.d[1]).filter((t) => typeof t === 'number');
+  if (!times.length) throw new Error('market-date probe returned no usable bar timestamps');
+
+  const latest = Math.max(...times);
+  return {
+    date: new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date(latest * 1000)),
+    barOpen: latest,
+    refs: times.length,
+  };
+}

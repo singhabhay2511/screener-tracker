@@ -1,4 +1,4 @@
 {
-  "_comment": "Optional fast-path skip list of NSE trading holidays (YYYY-MM-DD). This is an OPTIMISATION, not the safety mechanism -- capture.mjs independently detects non-trading days via the stale-fingerprint guard, so an out-of-date list here cannot corrupt the dataset. Populate from the official NSE holiday circular.",
+  "_comment": "OPTIONAL and unused by capture. The daily job determines the trading session from the market data itself (see fetchMarketDate), so holidays need no configuration. This list only suppresses gap warnings for known closures and can safely stay empty.",
   "holidays": []
 }

@@ -2,9 +2,11 @@ name: Daily capture
 
 on:
   schedule:
-    # 11:30 UTC == 17:00 IST, Mon-Fri. GitHub may delay scheduled runs by
-    # several minutes under load; harmless here since NSE closed at 15:30.
-    - cron: '30 11 * * 1-5'
+    # 11:30 UTC == 17:00 IST, EVERY day. The job asks the market data what the
+    # latest trading session is and records only when that session is new, so
+    # weekends, holidays and unscheduled closures need no calendar logic --
+    # and special sessions (Muhurat trading) are picked up automatically.
+    - cron: '30 11 * * *'
   workflow_dispatch:
     inputs:
       date:

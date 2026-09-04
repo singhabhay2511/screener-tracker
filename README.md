@@ -14,7 +14,7 @@ Runs entirely on GitHub Actions + GitHub Pages. No server, no database, no cost.
 ## How it works
 
 ```
-17:00 IST, Mon–Fri     capture.mjs   → data/snapshots/YYYY-MM-DD.json   (raw, immutable)
+17:00 IST, EVERY day   capture.mjs   → data/snapshots/YYYY-MM-DD.json   (raw, immutable)
                        build-dashboard.mjs → docs/dashboard.json        (derived)
                        git commit + Pages deploy
 
@@ -43,11 +43,12 @@ A dataset like this is only as good as its worst day. Three things are enforced:
 | Guard | Protects against |
 |---|---|
 | **Truncation check** | `capture.mjs` throws if `totalCount` exceeds `maxRows`. A partial day is never recorded as a complete one. |
-| **Stale fingerprint** | On a holiday TradingView replays the previous session verbatim. An identical symbol+close+volume fingerprint means the market didn't trade, so the day is skipped rather than granting every stock a phantom appearance. |
+| **Market-date gate** | The scanner replays the previous session byte-identically on any closed day — measured, not assumed. So the job reads the last daily bar's timestamp and records only when that session is new. |
+| **Open-session gate** | The daily bar exists from 09:15, so a run before 15:40 IST would store intraday values as a close. It refuses unless forced. |
 | **Status log** | `data/runs.csv` records `ok` / `error` / `skipped_*` separately, so "the job broke" is never mistaken for "nothing qualified today". |
 
-The holiday list in `config/nse-holidays.json` is a *speed* optimisation only — it's
-empty by default and the fingerprint guard catches holidays regardless.
+**No holiday list is needed.** `config/nse-holidays.json` is now only an optional aid
+for gap reporting; capture ignores it entirely.
 
 ---
 

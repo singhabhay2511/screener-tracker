@@ -1,14 +1,16 @@
 {
   "run_date": "2026-09-04",
-  "captured_at_ist": "2026-09-04 22:48:13",
+  "captured_at_ist": "2026-09-05 00:53:54",
+  "captured_on": "2026-09-05",
+  "bar_open": 1788493500,
   "screener": {
     "name": "4% Scan",
     "sourceUrl": "https://www.tradingview.com/screener/0mdQWH3o/"
   },
-  "filter_hash": "c8994561120df924",
   "total_count": 24,
   "row_count": 24,
   "fingerprint": "c1fa88ef6e528ae3",
+  "suspect_stale": false,
   "rows": [
     {
       "ticker": "NSE:XTRANET",

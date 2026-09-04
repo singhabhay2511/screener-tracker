@@ -66,13 +66,28 @@ const symbols = [...bySymbol.values()].map((e) => {
 // consecutive. So work out which weekdays between the first and last session
 // have no snapshot, and whether runs.csv explains them.
 // ---------------------------------------------------------------------------
-function runStatuses() {
-  if (!existsSync(RUNS_CSV)) return new Map();
-  const out = new Map();
-  const lines = readFileSync(RUNS_CSV, 'utf8').trim().split('\n').slice(1);
-  for (const line of lines) {
-    const [date, status] = line.split(',');
-    if (date) out.set(date, status);          // last entry for a date wins
+/**
+ * Calendar days on which the job actually executed without erroring, keyed by
+ * `ran_on`. Header-aware so it reads both the current schema and the older
+ * one that had no `ran_on` column.
+ */
+function ranCleanlyOn() {
+  if (!existsSync(RUNS_CSV)) return new Set();
+  const lines = readFileSync(RUNS_CSV, 'utf8').trim().split('\n');
+  if (lines.length < 2) return new Set();
+
+  const cols = lines[0].split(',');
+  const iRan = cols.indexOf('ran_on');
+  const iDate = cols.indexOf('run_date');
+  const iStatus = cols.indexOf('status');
+
+  const out = new Set();
+  for (const line of lines.slice(1)) {
+    const f = line.split(',');
+    if (f[iStatus] === 'error') continue;
+    // Older rows have no ran_on; their run_date was the calendar date.
+    const day = iRan >= 0 && f[iRan] ? f[iRan] : f[iDate];
+    if (day) out.add(day);
   }
   return out;
 }
@@ -80,9 +95,8 @@ function runStatuses() {
 function findGaps() {
   if (sessions.length < 2) return [];
   const recorded = new Set(sessions);
-  const statuses = runStatuses();
+  const ran = ranCleanlyOn();
   const holidays = loadHolidays();
-  const benign = new Set(['skipped_holiday', 'skipped_stale', 'skipped_weekend']);
 
   const gaps = [];
   const cur = new Date(`${sessions[0]}T12:00:00Z`);
@@ -92,14 +106,12 @@ function findGaps() {
     cur.setUTCDate(cur.getUTCDate() + 1);
     const d = cur.toISOString().slice(0, 10);
     const dow = cur.getUTCDay();
-    if (dow === 0 || dow === 6) continue;
-    if (recorded.has(d)) continue;
-    if (holidays.has(d)) continue;
+    if (dow === 0 || dow === 6) continue;      // weekends are never gaps
+    if (recorded.has(d)) continue;             // it is a recorded session
+    if (holidays.has(d)) continue;             // optional known-holiday list
+    if (ran.has(d)) continue;                  // job ran and found no new session
 
-    const status = statuses.get(d);
-    if (status && benign.has(status)) continue;   // explained, not a data loss
-
-    gaps.push({ date: d, status: status ?? 'never_ran' });
+    gaps.push({ date: d, status: 'never_ran' });
   }
   return gaps;
 }

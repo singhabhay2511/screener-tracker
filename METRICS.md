@@ -28,8 +28,18 @@ whenever settings differ from stock — outside every view, so it is always reac
 ## The unit: a "session"
 
 Everything is measured in **recorded trading sessions**, never calendar days.
-`sessions` is the ordered list of dates that have a snapshot file. A weekend, a
-holiday, or a skipped run simply isn't in the list.
+
+The job runs **every day** and asks the market data which session is latest. The
+scanner's `time` column is the last daily bar's open — 09:15 IST on NSE — so on any
+closed day it still reports the previous trading date. A snapshot is written only
+when that date is new, and it is filed under the **market** date rather than the
+calendar date the job happened to run on.
+
+This was chosen after measuring what the scanner actually does on a closed day: it
+replays the previous session **byte-identically** — same symbols, same closes, same
+volumes — rather than returning nothing. So a blank-result check would never fire,
+while a calendar check would need a holiday list *and* would miss special sessions
+such as Muhurat trading, which fall on days a weekday test skips.
 
 **Gaps are now detected.** The build cross-references `data/runs.csv` and the holiday
 list against the calendar. Any weekday between the first and last session with no
