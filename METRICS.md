@@ -111,18 +111,10 @@ These exist only because `track.mjs` records prices on the quiet days too.
 | Metric | Computation |
 |---|---|
 | **Chg % (last hit)** | The move on its most recent appearance. Not an average — the single latest surge. |
+| **Avg chg %** | Mean `change_pct` across every appearance. Only hit days enter it; a stock has no `change_pct` on days it did not appear. |
 | **Since 1st** | `current close / close on first appearance − 1` |
 | **Since last** | `current close / close on most recent appearance − 1` |
 | **From surge** | `current close / highest close across all its appearances − 1` |
-| **Avg return** | Mean of `current close / close on that hit − 1` across **every** appearance. |
-
-**Avg return vs the surge size.** The old *Avg chg %* averaged how big each pop was on
-the day. *Avg return* averages what each pop was actually worth if you had bought its
-close and held to now — same days, opposite question. RAYMOND's two hits averaged
-**+9.31%** on the day but have returned **+4.39%** since (+11.03% from 09-02, −2.25%
-from 09-03). A name can surge hard and still give it back.
-
-Only appearance days are used; days it did not hit never enter either figure.
 
 > **Limitation.** All three use *closing* prices. The scanner columns we pull don't
 > include the intraday high of the surge day, so "from surge" measures the pullback

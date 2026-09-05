@@ -189,6 +189,7 @@
       ).toFixed(3);
 
       // The move on its most recent appearance, as opposed to the average across all of them.
+      s.avg_change = mean(s.hits.map((h) => h.change_pct).filter((v) => v != null));
       s.latest_change = s.hits.at(-1).change_pct ?? null;
       s.best_change = Math.max(...s.hits.map((h) => h.change_pct ?? -Infinity));
       s.avg_rel_vol = mean(s.hits.map((h) => h.rel_vol).filter((v) => v != null));
@@ -199,14 +200,6 @@
       s.last_close = lastClose;
       s.since_first_pct = nowClose && firstClose ? +((nowClose / firstClose - 1) * 100).toFixed(2) : null;
       s.since_last_pct = nowClose && lastClose ? +((nowClose / lastClose - 1) * 100).toFixed(2) : null;
-
-      // Average return if you had bought at the close of every appearance and
-      // held to today. Uses only hit days, and answers whether the surges paid
-      // -- a different question from how large they were on the day.
-      s.avg_return = nowClose
-        ? mean(s.hits.map((h) => (h.close ? (nowClose / h.close - 1) * 100 : null))
-            .filter((v) => v != null))
-        : null;
       s.rel_vol_now = s.track?.rel_vol ?? null;
       s.pe = s.hits.at(-1).pe ?? null;
       s.analyst_rating = s.hits.at(-1).analyst_rating ?? null;
