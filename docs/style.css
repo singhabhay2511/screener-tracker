@@ -259,3 +259,29 @@ tbody tr:hover a.tv{opacity:.9}
 .hgrid th.s a.tv{margin-left:4px}
 h2 a.tv{width:20px;height:20px;vertical-align:-2px}
 h2 a.tv svg{width:13px;height:13px}
+
+/* ---- analyst rating ---- */
+.rchip2{display:inline-block;font-size:11px;font-weight:650;padding:2px 8px;border-radius:11px;white-space:nowrap}
+.r-sbuy{background:#d3f0dd;color:#14532d}
+.r-buy{background:#e4f2da;color:#3f6212}
+.r-neu{background:var(--chip);color:var(--muted)}
+.r-sell{background:#fdf1cf;color:#7a5a10}
+.r-ssell{background:#fadcda;color:#8a1c15}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .r-sbuy{background:#12331f;color:#86efac}
+:root:not([data-theme="light"]) .r-buy{background:#1d3315;color:#bef264}
+:root:not([data-theme="light"]) .r-sell{background:#42360f;color:#f0d68a}
+:root:not([data-theme="light"]) .r-ssell{background:#3d1614;color:#fca5a5}}
+
+/* ---- leaderboard row expander ---- */
+.rowex{border:0;background:none;color:var(--muted);cursor:pointer;font-size:10px;
+  padding:0 5px 0 0;line-height:1}
+.rowex:hover{color:var(--accent)}
+tr.rowopen{background:var(--hi)}
+
+/* ---- header export button ---- */
+#exportBtn{border:1px solid var(--line);background:var(--panel);color:var(--muted);
+  font:inherit;font-size:12px;font-weight:560;padding:5px 12px;border-radius:14px;
+  cursor:pointer;white-space:nowrap}
+#exportBtn:hover{border-color:var(--accent);color:var(--accent)}
+header{position:relative}
+.imp{border-bottom:1px dotted var(--muted);cursor:help}

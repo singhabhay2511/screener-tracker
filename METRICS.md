@@ -50,6 +50,27 @@ caveat in its tooltip. Days explained as `skipped_holiday`, `skipped_stale` or
 
 ---
 
+## Session provenance
+
+Snapshots carry their origin, and the header shows a count of any that were not
+captured by this project.
+
+| Kind | Meaning |
+|---|---|
+| native | Captured by `capture.mjs` from the scanner API, full float precision. |
+| `imported: true` | Backfilled from another tool running the same screener. |
+| `demo: true` | Synthetic, only ever on the /demo/ page. |
+
+**Imported sessions are lower precision.** The source recorded display strings
+("12.45 M", "+20.00%"), so prices and percentages land at 2dp and volumes at about
+3 significant figures. Dates, symbols and sectors are exact. `Value.Traded` and
+`volume_change` were not captured at all and are null.
+
+Import with `node scripts/import-external.mjs <export.json>`. It refuses to overwrite
+an existing snapshot, so a native capture always wins over an imported one.
+
+---
+
 ## Recurrence metrics
 
 | Metric | Exactly what it computes | Tune |
@@ -59,6 +80,12 @@ caveat in its tooltip. Days explained as `skipped_holiday`, `skipped_stale` or
 | **Streak** | Consecutive sessions appeared. Shown only if the run reaches the latest session, otherwise 0. | — |
 | **Best streak** | Longest such run ever, anywhere in history. | — |
 | **Sessions ago** | Sessions between the last appearance and the latest session. `0` = appeared today. | — |
+
+**Turning heat off.** The Leaderboard has a *Rank by* control: **Heat** (recency-weighted)
+or **Hits** (raw count, which also hides the Heat column). Setting a very large decay is
+*not* equivalent — heat only approaches a flat count asymptotically. At 41 sessions and
+decay 300 the oldest hit still counts 0.875 against 1.00 for today; matching a true count
+within 1% needs decay above 100x your history length.
 
 **Why heat is the default sort.** A raw lifetime count rewards names that print 4%
 moves routinely for months. Heat rewards *clustering* — four appearances in eight

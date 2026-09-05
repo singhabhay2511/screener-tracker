@@ -10,6 +10,7 @@ const S = {
   sortKey: 'heat', sortDir: -1,
   query: '',
   expanded: null,                // sector row expanded inline
+  expandedRow: null,             // leaderboard row expanded inline
   depth: 0,                      // our own history depth, for the Back button
 };
 
@@ -66,6 +67,16 @@ function tvLink(ticker) {
     ><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor"
       stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
       ><path d="M2.2 11.2 6 7l2.8 2.4L13.6 4.4"/><path d="M10.2 4.4h3.4v3.4"/></svg></a>`;
+}
+
+const RATING_CLASS = {
+  'Strong buy': 'r-sbuy', Buy: 'r-buy', Neutral: 'r-neu',
+  Sell: 'r-sell', 'Strong sell': 'r-ssell',
+};
+
+function ratingChip(r) {
+  if (!r || r === 'No rating') return '<span class="muted">—</span>';
+  return `<span class="rchip2 ${RATING_CLASS[r] || ''}">${esc(r)}</span>`;
 }
 
 function baseChip(base) {
@@ -411,11 +422,19 @@ function renderSession() {
 }
 
 function renderLeaderboard() {
+  // Ranking by raw hit count is not the same as a very large heat decay:
+  // heat only *approaches* a flat count asymptotically, so this turns the
+  // recency weighting off outright and hides the column.
+  const byHits = CFG.leaderboard.rankBy === 'hits';
+
   const cols = [
-    ['symbol', 'Symbol', 'sym'], ['count', `Hits (${S.win})`, ''], ['heat', 'Heat', ''],
+    ['symbol', 'Symbol', 'sym'], ['count', `Hits (${S.win})`, ''],
+    ...(byHits ? [] : [['heat', 'Heat', '']]),
     ['streak', 'Streak', ''], ['sessions_since', 'Sessions ago', ''],
     ['since_first_pct', 'Since 1st', ''], ['since_last_pct', 'Since last', ''],
-    ['avg_change', 'Avg chg %', ''], ['sector_rank', 'Sector', 'sym'], ['base_score', 'Base', 'sym'],
+    ['avg_change', 'Avg chg %', ''], ['pe', 'P/E', ''],
+    ['analyst_rating', 'Rating', 'sym'],
+    ['sector_rank', 'Sector', 'sym'], ['base_score', 'Base', 'sym'],
   ];
 
   const rows = activeSymbols()
@@ -437,6 +456,11 @@ function renderLeaderboard() {
 
   return `
   <div class="toolbar">
+    <label>Rank by</label>
+    <select id="rankBy">
+      <option value="heat" ${byHits ? '' : 'selected'}>Heat (recency-weighted)</option>
+      <option value="hits" ${byHits ? 'selected' : ''}>Hits (raw count)</option>
+    </select>
     <label>Window</label><select id="win">${opts}</select>
     <input type="search" id="q" placeholder="Filter symbol / sector…" value="${esc(S.query)}">
   </div>
@@ -450,19 +474,42 @@ function renderLeaderboard() {
   <div class="scroll"><table><thead><tr>
     ${cols.map(([k, label, c]) => `<th class="${c}" data-k="${k}">${label}${S.sortKey === k ? (S.sortDir < 0 ? ' ↓' : ' ↑') : ''}</th>`).join('')}
   </tr></thead><tbody>
-  ${rows.map((s) => `
-    <tr data-ticker="${esc(s.ticker)}">
-      <td class="sym"><b>${esc(s.symbol)}</b>${tvLink(s.ticker)}${badges(s)}<span class="desc">${esc(s.name)}</span></td>
+  ${rows.map((s) => {
+    const open = S.expandedRow === s.ticker;
+    return `
+    <tr data-ticker="${esc(s.ticker)}" class="${open ? 'rowopen' : ''}">
+      <td class="sym">
+        <button class="rowex" data-expand-row="${esc(s.ticker)}"
+          title="${open ? 'Hide' : 'Show'} appearance dates" aria-expanded="${open}">${open ? '▾' : '▸'}</button
+        ><b>${esc(s.symbol)}</b>${tvLink(s.ticker)}${badges(s)}<span class="desc">${esc(s.name)}</span></td>
       <td><b>${s.count}</b></td>
-      <td>${num(s.heat, 2)}</td>
+      ${byHits ? '' : `<td>${num(s.heat, 2)}</td>`}
       <td>${s.streak || '—'}</td>
       <td>${s.sessions_since}</td>
       <td class="${cls(s.since_first_pct)}">${pct(s.since_first_pct)}</td>
       <td class="${cls(s.since_last_pct)}">${pct(s.since_last_pct)}</td>
       <td class="${cls(s.avg_change)}">${pct(s.avg_change)}</td>
+      <td>${s.pe == null ? '—' : num(s.pe)}</td>
+      <td class="sym">${ratingChip(s.analyst_rating)}</td>
       <td class="sym">${sectorChip(s.sector, s.sector_rank, s.sector_tier, s.sector_of)}</td>
       <td class="sym">${baseChip(s.base)}</td>
-    </tr>`).join('')}
+    </tr>
+    ${!open ? '' : `<tr class="subrow"><td colspan="${cols.length}">
+      <div class="subwrap">
+        <div class="subhead"><b>${s.hits.length} appearance${s.hits.length === 1 ? '' : 's'}</b>
+          <span class="sub">first ${s.first_seen} · latest ${s.last_seen}</span></div>
+        <table class="subtable"><thead><tr>
+          <th class="sym">Date</th><th>Rank</th><th>Close</th><th>Chg %</th><th>Rel vol</th><th>Volume</th>
+        </tr></thead><tbody>
+        ${s.hits.slice().reverse().map((h) => `<tr>
+          <td class="sym">${h.date}</td><td>${h.rank}</td><td>${num(h.close)}</td>
+          <td class="${cls(h.change_pct)}">${pct(h.change_pct)}</td>
+          <td>${num(h.rel_vol)}</td><td>${vol(h.volume)}</td>
+        </tr>`).join('')}
+        </tbody></table>
+      </div>
+    </td></tr>`}`;
+  }).join('')}
   </tbody></table></div>`}`;
 }
 
@@ -765,6 +812,15 @@ function render() {
   const w = $('#win');
   if (w) w.onchange = (e) => { S.win = e.target.value; commit(false); };
 
+  const rb = $('#rankBy');
+  if (rb) rb.onchange = (e) => {
+    CFG.leaderboard.rankBy = e.target.value;
+    S.sortKey = e.target.value === 'hits' ? 'count' : 'heat';
+    S.sortDir = -1;
+    saveCfg();
+    render();
+  };
+
   const sp = $('#sessionPick');
   if (sp) sp.onchange = (e) => { S.session = e.target.value; commit(); };
 
@@ -779,6 +835,112 @@ function render() {
 /** Re-derive every metric from the raw data under the current settings. */
 function applyCfg() {
   Metrics.recompute(D, CFG);
+}
+
+// ---------- CSV export --------------------------------------------------
+// Exports exactly what is on screen: the active view, with the current
+// filters, window and sort applied. Numbers go out unrounded so a
+// spreadsheet can do its own formatting.
+
+const csvCell = (v) => {
+  if (v == null) return '';
+  const s = String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+function download(name, text, mime) {
+  const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Per-view column definitions, so each export matches what you were looking at. */
+function exportSpec() {
+  const sym = (s) => [s.symbol, s.name, s.sector, s.sector_rank, s.sector_tier];
+  const symHead = ['symbol', 'name', 'sector', 'sector_rank', 'sector_tier'];
+
+  if (S.view === 'focus') {
+    const { gate, watch } = focusList();
+    return {
+      name: 'focus',
+      header: [...symHead, 'section', 'reasons', 'base_status', 'base_score',
+        'hits_10', 'hits_30', 'sessions_ago', 'from_surge_pct', 'since_first_pct'],
+      rows: [...gate.map((e) => ['gate', e]), ...watch.map((e) => ['watch', e])]
+        .map(([section, e]) => [...sym(e.s), section, e.reasons.join(' | '),
+          e.s.base?.status, e.s.base?.score, e.s.counts[10], e.s.counts[30],
+          e.s.sessions_since, e.s.base?.from_surge_pct, e.s.since_first_pct]),
+    };
+  }
+
+  if (S.view === 'session') {
+    const date = S.session || D.latest_session;
+    const rows = D.symbols.filter((s) => s.hits.some((h) => h.date === date));
+    return {
+      name: `session-${date}`,
+      header: [...symHead, 'date', 'rank', 'close', 'change_pct', 'rel_vol', 'volume',
+        'mkt_cap', 'pe', 'analyst_rating', 'since_first_pct', 'base_status'],
+      rows: rows.map((s) => {
+        const h = s.hits.find((x) => x.date === date);
+        return [...sym(s), date, h.rank, h.close, h.change_pct, h.rel_vol, h.volume,
+          h.mkt_cap, h.pe, h.analyst_rating, s.since_first_pct, s.base?.status];
+      }),
+    };
+  }
+
+  if (S.view === 'bases') {
+    const rows = activeSymbols().filter((s) => s.base && s.sessions_since >= 3)
+      .sort((a, b) => (b.base.score ?? -1) - (a.base.score ?? -1));
+    return {
+      name: 'bases',
+      header: [...symHead, 'base_score', 'base_status', 'sessions_ago', 'from_surge_pct',
+        'since_first_pct', 'rel_vol_now', 'tightness_pct'],
+      rows: rows.map((s) => [...sym(s), s.base.score, s.base.status, s.sessions_since,
+        s.base.from_surge_pct, s.since_first_pct, s.rel_vol_now, s.base.tightness_pct]),
+    };
+  }
+
+  if (S.view === 'sectors') {
+    return {
+      name: 'sectors',
+      header: ['sector', 'rank', 'tier', 'appearances', 'symbols'],
+      rows: D.sectors.map((x) => [x.sector, x.rank, x.tier, x.count, x.symbols]),
+    };
+  }
+
+  // leaderboard and heat grid both export the symbol table
+  const rows = activeSymbols()
+    .map((s) => ({ ...s, count: s.counts[S.win] != null ? s.counts[S.win] : s.counts.all }))
+    .filter((s) => s.count > 0)
+    .sort((a, b) => {
+      const x = a[S.sortKey], y = b[S.sortKey];
+      if (typeof x === 'string') return S.sortDir * x.localeCompare(y);
+      return S.sortDir * ((x == null ? -Infinity : x) - (y == null ? -Infinity : y));
+    });
+  // With window "all" the windowed count IS the total, so don't emit it twice.
+  const winCol = S.win === 'all' ? [] : [`hits_${S.win}`];
+  const winVal = (s) => (S.win === 'all' ? [] : [s.count]);
+
+  return {
+    name: `leaderboard-${S.win}`,
+    header: [...symHead, ...winCol, 'hits_all', 'heat', 'streak', 'longest_streak',
+      'sessions_ago', 'first_seen', 'last_seen', 'since_first_pct', 'since_last_pct',
+      'avg_change_pct', 'best_change_pct', 'pe', 'analyst_rating', 'base_score', 'base_status'],
+    rows: rows.map((s) => [...sym(s), ...winVal(s), s.counts.all, s.heat, s.streak, s.longest_streak,
+      s.sessions_since, s.first_seen, s.last_seen, s.since_first_pct, s.since_last_pct,
+      s.avg_change, s.best_change, s.pe, s.analyst_rating, s.base?.score, s.base?.status]),
+  };
+}
+
+function exportCsv() {
+  const { name, header, rows } = exportSpec();
+  const csv = [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n');
+  const stamp = (D.latest_session || 'export').replace(/-/g, '');
+  download(`4pct-${name}-${stamp}.csv`, csv, 'text/csv;charset=utf-8');
 }
 
 /**
@@ -891,6 +1053,14 @@ document.addEventListener('click', (ev) => {
     return commit();
   }
 
+  const exrow = ev.target.closest('[data-expand-row]');
+  if (exrow) {
+    ev.stopPropagation();
+    const t = exrow.dataset.expandRow;
+    S.expandedRow = S.expandedRow === t ? null : t;
+    return render();
+  }
+
   const dm = ev.target.closest('[data-dismiss]');
   if (dm) {
     ev.stopPropagation();
@@ -954,6 +1124,7 @@ document.addEventListener('click', (ev) => {
 document.querySelectorAll('#tabs button').forEach((b) => {
   b.onclick = () => { S.view = b.dataset.view; commit(); };
 });
+$('#exportBtn').onclick = exportCsv;
 $('#drawer-close').onclick = () => { $('#drawer').hidden = true; };
 $('#drawer').onclick = (e) => { if (e.target.id === 'drawer') $('#drawer').hidden = true; };
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#drawer').hidden = true; });
@@ -972,6 +1143,12 @@ fetch('dashboard.json?' + Date.now())
     // The published demo lives at /demo/ and reuses these same assets with its
     // own frozen dataset, so the two pages never drift apart visually.
     const isDemo = location.pathname.replace(/\/+$/, '').endsWith('/demo');
+    if (d.imported_sessions > 0) {
+      $('#meta').innerHTML += ` · <span class="imp" title="Backfilled from another tool running the same screener.`
+        + ` Prices and percentages are at 2dp and volumes at ~3 significant figures, because that source`
+        + ` recorded display strings rather than raw numbers.">${d.imported_sessions} imported</span>`;
+    }
+
     $('#meta').innerHTML += isDemo
       ? ' · <a href="../">← live dashboard</a>'
       : ' · <a href="demo/">demo with full history →</a>';

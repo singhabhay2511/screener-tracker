@@ -103,6 +103,9 @@ Verified: this replica returns the identical 24 symbols the saved screener displ
 | **Sectors** | Sector strength over 30 sessions. Click a row to expand its stocks, counts and dates. |
 
 Every symbol carries a chart icon linking straight to its TradingView chart, in a new tab.
+**Export CSV** in the header downloads exactly what is on screen — the active view, with the
+current filters, window and sort applied. Leaderboard rows expand inline to show their
+appearance dates, and *Rank by* switches between heat and raw hit count.
 
 Every KPI card, sector chip, badge and grid cell is a filter. Active filters show as
 removable chips and apply across all views.

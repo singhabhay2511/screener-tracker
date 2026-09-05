@@ -41,6 +41,7 @@ for (const snap of snapshots) {
       date: snap.run_date, rank: r.rank, close: r.close,
       change_pct: r.change_pct, rel_vol: r.rel_vol,
       volume: r.volume, mkt_cap: r.mkt_cap,
+      pe: r.pe ?? null, analyst_rating: r.analyst_rating ?? null,
     });
   }
 }
@@ -121,6 +122,7 @@ const gaps = findGaps();
 const out = {
   generated_at: new Date().toISOString(),
   demo_sessions: snapshots.filter((s) => s.demo === true).length,
+  imported_sessions: snapshots.filter((s) => s.imported === true).length,
   real_sessions: snapshots.filter((s) => s.demo !== true).length,
   tracking_sessions: tracking.length,
   screener: snapshots.at(-1)?.screener ?? null,

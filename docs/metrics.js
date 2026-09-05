@@ -12,6 +12,8 @@
 
     windows: [10, 30, 90],
 
+    leaderboard: { rankBy: 'heat' },   // 'heat' = recency-weighted, 'hits' = raw count
+
     sector: { window: 30, hotRanks: 3, warmPct: 40 },
 
     // Gap since the previous appearance, in sessions. A stock returning after
@@ -197,6 +199,8 @@
       s.since_first_pct = nowClose && firstClose ? +((nowClose / firstClose - 1) * 100).toFixed(2) : null;
       s.since_last_pct = nowClose && lastClose ? +((nowClose / lastClose - 1) * 100).toFixed(2) : null;
       s.rel_vol_now = s.track?.rel_vol ?? null;
+      s.pe = s.hits.at(-1).pe ?? null;
+      s.analyst_rating = s.hits.at(-1).analyst_rating ?? null;
 
       s.base = baseAnalysis(s.hits, s.track, s.closes, sessionsSince, cfg);
 

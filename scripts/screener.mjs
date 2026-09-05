@@ -83,6 +83,7 @@ export async function fetchScreener(cfg) {
       eps: o.earnings_per_share_diluted_ttm ?? null,
       value_traded: o['Value.Traded'] ?? null,
       volume_change: o.volume_change ?? null,
+      analyst_rating: ratingLabel(o['Recommend.All']),
     };
   });
 
@@ -231,4 +232,17 @@ export async function fetchMarketDate(cfg) {
     barOpen: latest,
     refs: times.length,
   };
+}
+
+/**
+ * TradingView returns the analyst consensus as a number in [-1, 1]
+ * (`Recommend.All`). These are its own display bands.
+ */
+export function ratingLabel(v) {
+  if (v == null || Number.isNaN(v)) return null;
+  if (v >= 0.5) return 'Strong buy';
+  if (v >= 0.1) return 'Buy';
+  if (v > -0.1) return 'Neutral';
+  if (v > -0.5) return 'Sell';
+  return 'Strong sell';
 }
