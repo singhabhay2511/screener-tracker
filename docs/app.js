@@ -433,7 +433,7 @@ function renderLeaderboard() {
     ['streak', 'Streak', ''], ['sessions_since', 'Sessions ago', ''],
     ['latest_change', 'Chg % (last hit)', ''],
     ['since_first_pct', 'Since 1st', ''], ['since_last_pct', 'Since last', ''],
-    ['avg_change', 'Avg chg %', ''], ['pe', 'P/E', ''],
+    ['avg_return', 'Avg return', ''], ['pe', 'P/E', ''],
     ['analyst_rating', 'Rating', 'sym'],
     ['sector_rank', 'Sector', 'sym'], ['base_score', 'Base', 'sym'],
   ];
@@ -490,7 +490,7 @@ function renderLeaderboard() {
       <td class="${cls(s.latest_change)}">${pct(s.latest_change)}</td>
       <td class="${cls(s.since_first_pct)}">${pct(s.since_first_pct)}</td>
       <td class="${cls(s.since_last_pct)}">${pct(s.since_last_pct)}</td>
-      <td class="${cls(s.avg_change)}">${pct(s.avg_change)}</td>
+      <td class="${cls(s.avg_return)}">${pct(s.avg_return)}</td>
       <td>${s.pe == null ? '—' : num(s.pe)}</td>
       <td class="sym">${ratingChip(s.analyst_rating)}</td>
       <td class="sym">${sectorChip(s.sector, s.sector_rank, s.sector_tier, s.sector_of)}</td>
@@ -931,10 +931,10 @@ function exportSpec() {
     name: `leaderboard-${S.win}`,
     header: [...symHead, ...winCol, 'hits_all', 'heat', 'streak', 'longest_streak',
       'sessions_ago', 'first_seen', 'last_seen', 'latest_change_pct', 'since_first_pct', 'since_last_pct',
-      'avg_change_pct', 'best_change_pct', 'pe', 'analyst_rating', 'base_score', 'base_status'],
+      'avg_return_pct', 'best_change_pct', 'pe', 'analyst_rating', 'base_score', 'base_status'],
     rows: rows.map((s) => [...sym(s), ...winVal(s), s.counts.all, s.heat, s.streak, s.longest_streak,
       s.sessions_since, s.first_seen, s.last_seen, s.latest_change, s.since_first_pct, s.since_last_pct,
-      s.avg_change, s.best_change, s.pe, s.analyst_rating, s.base?.score, s.base?.status]),
+      s.avg_return, s.best_change, s.pe, s.analyst_rating, s.base?.score, s.base?.status]),
   };
 }
 
