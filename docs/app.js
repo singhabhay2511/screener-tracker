@@ -7,7 +7,7 @@ const S = {
   sub: null,                     // in-place KPI filter: new | repeat | hot
   filters: {},                   // sector | flag | base | session
   win: 'all',
-  sortKey: 'heat', sortDir: -1,
+  sort: {},                      // per-view: { view: { key, dir } }
   query: '',
   expanded: null,                // sector row expanded inline
   expandedRow: null,             // leaderboard row expanded inline
@@ -67,6 +67,37 @@ function tvLink(ticker) {
     ><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor"
       stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
       ><path d="M2.2 11.2 6 7l2.8 2.4L13.6 4.4"/><path d="M10.2 4.4h3.4v3.4"/></svg></a>`;
+}
+
+// ---------- sorting -----------------------------------------------------
+// Each view keeps its own sort, because a key that means something on one
+// table ("heat") is meaningless on another ("appearances"). Views declare a
+// default; clicking a header overrides it and toggles direction.
+
+function curSort(view, defKey, defDir = -1) {
+  return S.sort[view] || { key: defKey, dir: defDir };
+}
+
+/** Header cells for [key, label, cssClass] triples. A null key is unsortable. */
+function heads(cols, sort) {
+  return cols.map(([k, label, c]) => (k == null
+    ? `<th class="${c || ''}">${label}</th>`
+    : `<th class="${c || ''}" data-k="${k}">${label}${sort.key === k ? (sort.dir < 0 ? ' ↓' : ' ↑') : ''}</th>`
+  )).join('');
+}
+
+/** Sort in place by a flat property, nulls always last. */
+function sortBy(rows, key, dir, pick = (r, k) => r[k]) {
+  return rows.sort((a, b) => {
+    const x = pick(a, key), y = pick(b, key);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    if (typeof x === 'string' || typeof y === 'string') {
+      return dir * String(x).localeCompare(String(y));
+    }
+    return dir * (x - y);
+  });
 }
 
 const RATING_CLASS = {
@@ -281,10 +312,19 @@ function renderFocus() {
         : `<button class="dmiss undo" data-restore="${esc(e.s.ticker)}">Restore</button>`}</td>
     </tr>`;
 
+  const fSort = curSort('focus', 'base_score');
+  const pick = (e, k) => ({
+    symbol: e.s.symbol, sector: e.s.sector, reasons: e.reasons.join(', '),
+    base_score: e.s.base?.score, hits10: e.s.counts[10], sessions_since: e.s.sessions_since,
+    from_surge: e.s.base?.from_surge_pct, since_first_pct: e.s.since_first_pct,
+  }[k]);
+  sortBy(gate, fSort.key, fSort.dir, pick);
+  sortBy(watch, fSort.key, fSort.dir, pick);
+
   const head = `<thead><tr>
-    <th class="sym">Symbol</th><th class="sym">Why</th><th class="sym">Base</th>
-    <th>Hits 10 · 30</th><th>Sess. ago</th><th>From surge</th><th>Since 1st</th>
-    <th class="sym">Sector</th><th class="sym"></th>
+    ${heads([['symbol','Symbol','sym'],['reasons','Why','sym'],['base_score','Base','sym'],
+      ['hits10','Hits 10 · 30'],['sessions_since','Sess. ago'],['from_surge','From surge'],
+      ['since_first_pct','Since 1st'],['sector','Sector','sym'],[null,'','sym']], fSort)}
   </tr></thead>`;
 
   const F = CFG.focus;
@@ -344,7 +384,9 @@ function renderSession() {
         sector_rank: s.sector_rank, sector_tier: s.sector_tier, sector_of: s.sector_of,
         base: s.base,
       };
-    }).sort((a, b) => (b.change_pct ?? 0) - (a.change_pct ?? 0));
+    });
+  const sSort = curSort('session', 'change_pct');
+  sortBy(rows, sSort.key, sSort.dir, (r, k) => (k === 'base_score' ? r.base?.score : r[k]));
 
   const isRepeat = (r) => ((r.counts && r.counts[10]) || 0) > 1;
   const isHot = (r) => r.sector_tier === 'hot';
@@ -404,8 +446,9 @@ function renderSession() {
   </div>
   ${!shown.length ? `<p class="empty">${rows.length ? 'No stocks in this session match that filter.' : 'No stocks matched on this session.'}</p>` : `
   <div class="scroll"><table><thead><tr>
-    <th class="sym">Symbol</th><th>Price</th><th>Chg %</th><th>Since 1st</th>
-    <th>Rel vol</th><th>Volume</th><th class="sym">Sector</th><th class="sym">Base</th>
+    ${heads([['symbol','Symbol','sym'],['close','Price'],['change_pct','Chg %'],
+      ['since_first_pct','Since 1st'],['rel_vol','Rel vol'],['volume','Volume'],
+      ['sector','Sector','sym'],['base_score','Base','sym']], sSort)}
   </tr></thead><tbody>
   ${shown.map((r) => `
     <tr data-ticker="${esc(r.ticker)}">
@@ -446,11 +489,8 @@ function renderLeaderboard() {
     }))
     .filter((s) => s.count > 0);
 
-  rows.sort((a, b) => {
-    const x = a[S.sortKey], y = b[S.sortKey];
-    if (typeof x === 'string') return S.sortDir * x.localeCompare(y);
-    return S.sortDir * ((x == null ? -Infinity : x) - (y == null ? -Infinity : y));
-  });
+  const sort = curSort('leaderboard', byHits ? 'count' : 'heat');
+  sortBy(rows, sort.key, sort.dir);
 
   const opts = ['10', '30', '90', 'all'].map((w) =>
     `<option value="${w}" ${w === String(S.win) ? 'selected' : ''}>${w === 'all' ? `All ${D.session_count} sessions` : `Last ${w} sessions`}</option>`).join('');
@@ -473,7 +513,7 @@ function renderLeaderboard() {
     [{ path: 'heat.decay', label: 'Decay (sessions)', min: 1, max: 200, hint: 'lower = more recency-biased' }])}
   ${!rows.length ? '<p class="empty">No symbols match these filters.</p>' : `
   <div class="scroll"><table><thead><tr>
-    ${cols.map(([k, label, c]) => `<th class="${c}" data-k="${k}">${label}${S.sortKey === k ? (S.sortDir < 0 ? ' ↓' : ' ↑') : ''}</th>`).join('')}
+    ${heads(cols, sort)}
   </tr></thead><tbody>
   ${rows.map((s) => {
     const open = S.expandedRow === s.ticker;
@@ -517,8 +557,12 @@ function renderLeaderboard() {
 
 function renderBases() {
   const rows = activeSymbols()
-    .filter((s) => s.base && s.sessions_since >= 3)
-    .sort((a, b) => (b.base.score ?? -1) - (a.base.score ?? -1));
+    .filter((s) => s.base && s.sessions_since >= 3);
+  const bSort = curSort('bases', 'base_score');
+  sortBy(rows, bSort.key, bSort.dir, (r, k) => ({
+    base_score: r.base?.score, base_status: r.base?.status,
+    from_surge: r.base?.from_surge_pct, tight: r.base?.tightness_pct,
+  }[k] ?? r[k]));
 
   const part = (v) => (v == null ? '<i class="na">n/a</i>' : `<i class="pb" style="--w:${Math.round(v * 100)}%"></i>`);
 
@@ -585,10 +629,10 @@ function renderBases() {
     ])}
   ${!rows.length ? `<p class="empty">Nothing basing yet — needs symbols whose last appearance was 3+ sessions ago.</p>` : `
   <div class="scroll"><table><thead><tr>
-    <th class="sym">Symbol</th><th>Score</th><th class="sym">Status</th>
-    <th>Sessions ago</th><th>From surge</th><th>Since 1st</th><th>Rel vol</th>
-    <th class="sym">Pullback</th><th class="sym">vs MA</th><th class="sym">Vol dry</th><th class="sym">Tight</th>
-    <th class="sym">Sector</th>
+    ${heads([['symbol','Symbol','sym'],['base_score','Score'],['base_status','Status','sym'],
+      ['sessions_since','Sessions ago'],['from_surge','From surge'],['since_first_pct','Since 1st'],
+      ['rel_vol_now','Rel vol'],[null,'Pullback','sym'],[null,'vs MA','sym'],
+      [null,'Vol dry','sym'],['tight','Tight','sym'],['sector','Sector','sym']], bSort)}
   </tr></thead><tbody>
   ${rows.map((s) => {
     const p = s.base.parts;
@@ -650,14 +694,17 @@ function renderSectors() {
     </p>`;
   }
   const max = D.sectors[0].count;
+  const secSort = curSort('sectors', 'count');
+  const sectorRows = sortBy(D.sectors.slice(), secSort.key, secSort.dir);
 
   return `
   <p class="sub" style="margin:0 0 12px">Appearances by sector over the last ${CFG.sector.window} sessions. Click a row to expand its stocks.</p>
   ${panel}
   <div class="scroll"><table><thead><tr>
-    <th class="sym">Sector</th><th>Rank</th><th>Appearances</th><th>Symbols</th><th class="sym" style="width:45%">Share</th>
+    ${heads([['sector','Sector','sym'],['rank','Rank'],['count','Appearances'],
+      ['symbols','Symbols'],[null,'Share','sym']], secSort)}
   </tr></thead><tbody>
-  ${D.sectors.map((sec) => {
+  ${sectorRows.map((sec) => {
     const open = S.expanded === sec.sector;
     const members = D.symbols
       .filter((s) => s.sector === sec.sector)
@@ -817,8 +864,7 @@ function render() {
   const rb = $('#rankBy');
   if (rb) rb.onchange = (e) => {
     CFG.leaderboard.rankBy = e.target.value;
-    S.sortKey = e.target.value === 'hits' ? 'count' : 'heat';
-    S.sortDir = -1;
+    S.sort.leaderboard = { key: e.target.value === 'hits' ? 'count' : 'heat', dir: -1 };
     saveCfg();
     render();
   };
@@ -918,11 +964,9 @@ function exportSpec() {
   const rows = activeSymbols()
     .map((s) => ({ ...s, count: s.counts[S.win] != null ? s.counts[S.win] : s.counts.all }))
     .filter((s) => s.count > 0)
-    .sort((a, b) => {
-      const x = a[S.sortKey], y = b[S.sortKey];
-      if (typeof x === 'string') return S.sortDir * x.localeCompare(y);
-      return S.sortDir * ((x == null ? -Infinity : x) - (y == null ? -Infinity : y));
-    });
+    .filter(() => true);
+  const lbSort = curSort('leaderboard', CFG.leaderboard.rankBy === 'hits' ? 'count' : 'heat');
+  sortBy(rows, lbSort.key, lbSort.dir);
   // With window "all" the windowed count IS the total, so don't emit it twice.
   const winCol = S.win === 'all' ? [] : [`hits_${S.win}`];
   const winVal = (s) => (S.win === 'all' ? [] : [s.count]);
@@ -1081,8 +1125,8 @@ document.addEventListener('click', (ev) => {
   const sortTh = ev.target.closest('th[data-k]');
   if (sortTh) {
     const k = sortTh.dataset.k;
-    S.sortDir = S.sortKey === k ? -S.sortDir : -1;
-    S.sortKey = k;
+    const cur = S.sort[S.view];
+    S.sort[S.view] = { key: k, dir: cur && cur.key === k ? -cur.dir : -1 };
     return commit(false);
   }
 
@@ -1126,9 +1170,12 @@ document.addEventListener('click', (ev) => {
 document.querySelectorAll('#tabs button').forEach((b) => {
   b.onclick = () => { S.view = b.dataset.view; commit(); };
 });
-$('#exportBtn').onclick = exportCsv;
-$('#drawer-close').onclick = () => { $('#drawer').hidden = true; };
-$('#drawer').onclick = (e) => { if (e.target.id === 'drawer') $('#drawer').hidden = true; };
+// Wire optional shell elements defensively: one missing node must not throw
+// and abort the rest of the script, which would leave the page blank.
+const on = (sel, ev, fn) => { const el = $(sel); if (el) el.addEventListener(ev, fn); };
+on('#exportBtn', 'click', exportCsv);
+on('#drawer-close', 'click', () => { $('#drawer').hidden = true; });
+on('#drawer', 'click', (e) => { if (e.target.id === 'drawer') $('#drawer').hidden = true; });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#drawer').hidden = true; });
 
 fetch('dashboard.json?' + Date.now())

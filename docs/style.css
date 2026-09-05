@@ -285,3 +285,16 @@ tr.rowopen{background:var(--hi)}
 #exportBtn:hover{border-color:var(--accent);color:var(--accent)}
 header{position:relative}
 .imp{border-bottom:1px dotted var(--muted);cursor:help}
+
+/* ---- heat grid alignment ----
+   The global table{width:100%} stretched .hgrid across the container, blowing
+   each date column out to ~106px. The cell div then sat at the column's left
+   edge while the rotated header text was right-aligned, so labels drifted
+   right of their cells. Keep the grid at its natural width and centre both. */
+.hgrid{width:auto;table-layout:auto}
+.hgrid th.s{text-align:left;white-space:nowrap}
+.hgrid th.d,.hgrid td{text-align:center}
+.hgrid .cell{margin:0 auto}
+
+/* unsortable headers should not look clickable */
+th:not([data-k]){cursor:default}
