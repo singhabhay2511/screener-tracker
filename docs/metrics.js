@@ -189,6 +189,8 @@
       ).toFixed(3);
 
       s.avg_change = mean(s.hits.map((h) => h.change_pct).filter((v) => v != null));
+      // The move on its most recent appearance, as opposed to the average across all of them.
+      s.latest_change = s.hits.at(-1).change_pct ?? null;
       s.best_change = Math.max(...s.hits.map((h) => h.change_pct ?? -Infinity));
       s.avg_rel_vol = mean(s.hits.map((h) => h.rel_vol).filter((v) => v != null));
 
