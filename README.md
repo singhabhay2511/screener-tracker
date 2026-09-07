@@ -22,12 +22,13 @@ Runs entirely on GitHub Actions + GitHub Pages. No server, no database, no cost.
 ## How it works
 
 ```
-push to main          deploys docs/ to Pages immediately
-17:00 IST, EVERY day   capture.mjs   → data/snapshots/YYYY-MM-DD.json   (raw, immutable)
+push to main           deploys docs/ to Pages immediately
+16:07 + 20:07 IST      capture.mjs   → data/snapshots/YYYY-MM-DD.json   (raw, immutable)
+  (every day)
                        build-dashboard.mjs → docs/dashboard.json        (derived)
                        git commit + Pages deploy
 
-Saturdays 06:00 UTC    drift-check.mjs → opens an issue if the screener was edited
+Saturdays 11:43 IST    drift-check.mjs → opens an issue if the screener was edited
 ```
 
 The daily job posts the screener definition to TradingView's public scanner endpoint
@@ -194,7 +195,16 @@ Then open `docs/index.html` through any static server.
 
 - **No backfill.** TradingView exposes no screener history. Tracking starts the day
   the job first runs.
-- **GitHub cron drifts.** Scheduled runs can fire several minutes late under load.
-  Harmless — NSE closes at 15:30, so the 17:00 data is already settled.
+- **GitHub cron drifts badly.** Scheduled runs are queued best-effort and can be
+  delayed by *hours* or dropped entirely — measured at 145 and 166 minutes late on
+  consecutive days, then skipped altogether. Two mitigations: the crons sit on odd
+  minutes (:37) because :00 and :30 are the most contended slots, and capture runs
+  **twice daily** (16:07 and 20:07 IST). The job only records a session it does not
+  already have, so the second run costs nothing when the first worked and rescues
+  the day when it did not.
+
+  The delay cannot corrupt anything: snapshots are filed under the **market** date
+  from the last daily bar, not the runner's calendar date, so even a run crossing
+  midnight IST still lands on the right trading day.
 - **Unofficial endpoint.** The scanner API is undocumented and could change without
   notice. The daily job fails loudly rather than silently if it does.

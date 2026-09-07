@@ -2,11 +2,25 @@ name: Daily capture
 
 on:
   schedule:
-    # 11:30 UTC == 17:00 IST, EVERY day. The job asks the market data what the
-    # latest trading session is and records only when that session is new, so
-    # weekends, holidays and unscheduled closures need no calendar logic --
-    # and special sessions (Muhurat trading) are picked up automatically.
-    - cron: '30 11 * * *'
+    # Runs EVERY day. The job asks the market data what the latest trading
+    # session is and records only when that session is new, so weekends,
+    # holidays and unscheduled closures need no calendar logic -- and special
+    # sessions (Muhurat trading) are picked up automatically.
+    #
+    # Two things about the timing, both learned the hard way:
+    #
+    # 1. Odd minutes. GitHub queues scheduled workflows best-effort and drops
+    #    them under load. :00 and :30 are the most contended slots, so these
+    #    sit at :37. The old '30 11' fired 145 and 166 minutes late on
+    #    consecutive days, then was skipped altogether.
+    #
+    # 2. Two runs, not one. The job is idempotent -- it records only a session
+    #    it has not already got -- so a second run costs nothing when the first
+    #    succeeded, and rescues the day when the first is delayed or dropped.
+    #
+    # Both are safely past the 15:40 IST open-session gate.
+    - cron: '37 10 * * *'   # 16:07 IST -- primary, just after the close
+    - cron: '37 14 * * *'   # 20:07 IST -- backstop if the primary never fires
   workflow_dispatch:
     inputs:
       date:

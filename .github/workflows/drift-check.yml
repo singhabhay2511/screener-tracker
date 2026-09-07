@@ -2,9 +2,11 @@ name: Weekly drift check
 
 on:
   schedule:
-    # Saturdays 06:00 UTC. Compares the API replica against the live saved
+    # Saturdays, 11:43 IST. Compares the API replica against the live saved
     # screener so an edit in TradingView cannot silently corrupt the dataset.
-    - cron: '0 6 * * 6'
+    # Odd minute for the same reason as capture.yml: round slots are the most
+    # contended on GitHub's scheduler and get delayed or dropped.
+    - cron: '13 6 * * 6'
   workflow_dispatch:
 
 permissions:
