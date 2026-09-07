@@ -83,7 +83,7 @@ export async function fetchScreener(cfg) {
       eps: o.earnings_per_share_diluted_ttm ?? null,
       value_traded: o['Value.Traded'] ?? null,
       volume_change: o.volume_change ?? null,
-      analyst_rating: ratingLabel(o['Recommend.All']),
+      analyst_rating: ratingLabel(o.recommendation_mark),
     };
   });
 
@@ -235,14 +235,19 @@ export async function fetchMarketDate(cfg) {
 }
 
 /**
- * TradingView returns the analyst consensus as a number in [-1, 1]
- * (`Recommend.All`). These are its own display bands.
+ * Analyst consensus, from `recommendation_mark`: 1 = Strong buy .. 5 = Strong
+ * sell, null when no analyst covers the stock (common for small caps).
+ *
+ * NOT `Recommend.All` -- that is TradingView's *technical* rating derived from
+ * oscillators and moving averages. It is never null and is mechanically
+ * bullish for anything that just surged, so on this screener it rated 22 of 33
+ * names "Strong buy" and carried no information at all.
  */
 export function ratingLabel(v) {
   if (v == null || Number.isNaN(v)) return null;
-  if (v >= 0.5) return 'Strong buy';
-  if (v >= 0.1) return 'Buy';
-  if (v > -0.1) return 'Neutral';
-  if (v > -0.5) return 'Sell';
+  if (v < 1.5) return 'Strong buy';
+  if (v < 2.5) return 'Buy';
+  if (v < 3.5) return 'Neutral';
+  if (v < 4.5) return 'Sell';
   return 'Strong sell';
 }

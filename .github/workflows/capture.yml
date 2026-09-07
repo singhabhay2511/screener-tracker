@@ -70,12 +70,42 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data docs/dashboard.json
+
           if git diff --staged --quiet; then
-            echo "nothing to commit (skipped day)"
-          else
-            git commit -m "capture: $(date -u -d '+5 hours 30 minutes' +%Y-%m-%d)"
-            git push
+            echo "nothing to commit (no new session)"
+            exit 0
           fi
+
+          git commit -m "capture: $(TZ=Asia/Kolkata date +%F)"
+
+          # A bare `git push` here is a real failure mode: anyone pushing while
+          # this job runs gets the job rejected non-fast-forward, and the day's
+          # snapshot -- already built by the steps above -- is thrown away.
+          # That is exactly what killed the 2026-09-05 runs.
+          #
+          # So rebase onto whatever arrived and retry. Conflicts resolve toward
+          # this run's snapshot (-X theirs is "the commit being replayed"
+          # during a rebase), and docs/dashboard.json is then regenerated from
+          # data/ regardless, since it is fully derived and never authoritative.
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              echo "pushed on attempt $attempt"
+              exit 0
+            fi
+            echo "push rejected on attempt $attempt — rebasing onto origin/main"
+            if ! git pull --rebase -X theirs origin main; then
+              git rebase --abort || true
+              echo "could not rebase cleanly"
+              exit 1
+            fi
+            node scripts/build-dashboard.mjs
+            git add docs/dashboard.json
+            git diff --staged --quiet || git commit --amend --no-edit
+            sleep $((attempt * 3))
+          done
+
+          echo "still could not push after 5 attempts"
+          exit 1
 
   deploy:
     needs: capture

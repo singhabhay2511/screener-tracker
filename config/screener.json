@@ -60,7 +60,7 @@
     "sector",
     "Value.Traded",
     "volume_change",
-    "Recommend.All"
+    "recommendation_mark"
   ],
   "sort": {
     "sortBy": "change",
