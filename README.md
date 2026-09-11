@@ -103,7 +103,26 @@ Verified: this replica returns the identical 24 symbols the saved screener displ
 | **Heat grid** | Top 30 symbols × sessions. Click a filled cell to jump to that session. |
 | **Sectors** | Sector strength over 30 sessions. Click a row to expand its stocks, counts and dates. |
 
-Every symbol carries a chart icon linking straight to its TradingView chart, in a new tab.
+### Charts
+
+Every symbol carries a chart icon linking to its TradingView chart. **All chart links
+target one named window**, so the browser reuses a single TradingView tab and just
+changes its symbol — in your own logged-in layout, with your indicators and drawings —
+rather than spawning a new tab per click.
+
+**Chart navigator** (header button) drives that tab from the keyboard: ↑/↓ steps
+through whatever list is on screen, Enter sends the symbol to TradingView, D opens
+details, Esc closes. Tick *follow* to send every ↑/↓ automatically. Keep the TradingView
+tab beside the dashboard.
+
+**TV watchlist** downloads the list on screen as a TradingView-importable `.txt`
+(`NSE:CENTUM,NSE:GNRL,…`). Import it once (watchlist menu → Import list) and
+TradingView's own ↑/↓ steps through the names in your full layout.
+
+Why not embed the chart? Two hard limits on TradingView's side: `tradingview.com` sends
+`frame-ancestors 'none'`, so a logged-in layout can never be embedded anywhere; and its
+free embed widget does not carry NSE data at all — even `NSE:RELIANCE` is refused.
+Both were verified before settling on the reused-tab approach.
 **Export CSV** in the header downloads exactly what is on screen — the active view, with the
 current filters, window and sort applied. Leaderboard rows expand inline to show their
 appearance dates, and *Rank by* switches between heat and raw hit count.

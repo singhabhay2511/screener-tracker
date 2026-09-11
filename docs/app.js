@@ -62,7 +62,7 @@ function sectorChip(sector, rank, tier, of) {
  */
 function tvLink(ticker) {
   const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(ticker)}`;
-  return `<a class="tv" href="${url}" target="_blank" rel="noopener noreferrer"
+  return `<a class="tv" href="${url}" target="${TV_TARGET}" rel="noopener noreferrer"
     title="Open ${esc(ticker)} chart on TradingView" aria-label="Open ${esc(ticker)} chart on TradingView"
     ><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor"
       stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
@@ -857,6 +857,10 @@ function render() {
   renderFilterBar();
   renderCfgState();
   app.innerHTML = VIEWS[S.view]();
+  if (CHART.open && CHART.ticker) {
+    const row = app.querySelector(`tr[data-ticker="${CSS.escape(CHART.ticker)}"], th[data-ticker="${CSS.escape(CHART.ticker)}"]`);
+    if (row) row.classList.add('cur');
+  }
 
   const w = $('#win');
   if (w) w.onchange = (e) => { S.win = e.target.value; commit(false); };
@@ -883,6 +887,109 @@ function render() {
 /** Re-derive every metric from the raw data under the current settings. */
 function applyCfg() {
   Metrics.recompute(D, CFG);
+}
+
+// ---------- chart navigator ---------------------------------------------
+// Two hard facts shape this panel:
+//   1. tradingview.com sends frame-ancestors 'none', so a logged-in layout
+//      can never be embedded anywhere.
+//   2. The free embed widget does not serve NSE at all (a licensed feed --
+//      even NSE:RELIANCE is refused), so no NSE chart can be embedded either.
+//
+// What CAN be done is stop spawning a new tab per click. Every chart link
+// targets a window named "tvchart", so the browser reuses ONE TradingView
+// tab and just changes its symbol -- in your own logged-in layout, with your
+// indicators and drawings. This panel drives that tab from the keyboard.
+
+const TV_TARGET = 'tvchart';
+const tvUrl = (ticker) => `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(ticker)}`;
+
+const CHART = { open: false, ticker: null, follow: false };
+
+/** Ordered tickers currently on screen -- what ↑/↓ steps through. */
+function visibleTickers() {
+  return [...app.querySelectorAll('tr[data-ticker], th[data-ticker]')]
+    .map((el) => el.dataset.ticker)
+    .filter((t, i, a) => a.indexOf(t) === i);
+}
+
+/** Send a symbol to the single reused TradingView tab. */
+function sendToTradingView(ticker) {
+  if (!ticker) return;
+  window.open(tvUrl(ticker), TV_TARGET, 'noopener');
+}
+
+function showChart(ticker) {
+  if (!ticker) return;
+  CHART.ticker = ticker;
+  const s = D.symbols.find((x) => x.ticker === ticker);
+
+  $('#chart-symbol').textContent = s ? `${s.symbol} · ${s.name || ''}` : ticker;
+  $('#chart-tv').href = tvUrl(ticker);
+
+  $('#chart-hits').innerHTML = !s ? '' : `
+    <div class="ch-meta">
+      ${sectorChip(s.sector, s.sector_rank, s.sector_tier, s.sector_of)}
+      ${s.base ? baseChip(s.base) : ''}
+      ${badges(s)}
+    </div>
+    <div class="ch-kpis">
+      <div><span class="k">Since 1st</span><b class="${cls(s.since_first_pct)}">${pct(s.since_first_pct)}</b></div>
+      <div><span class="k">Since last</span><b class="${cls(s.since_last_pct)}">${pct(s.since_last_pct)}</b></div>
+      <div><span class="k">Sessions ago</span><b>${s.sessions_since}</b></div>
+      <div><span class="k">Hits</span><b>${s.counts.all}</b></div>
+    </div>
+    <div class="ch-row ch-head"><span>Appearances</span><span></span><span></span><span></span></div>
+    ${s.hits.slice().reverse().map((h) => `<div class="ch-row">
+      <span class="ch-date">${h.date}</span>
+      <span class="${cls(h.change_pct)}">${pct(h.change_pct)}</span>
+      <span class="muted">@ ${num(h.close)}</span>
+      <span class="muted">rv ${num(h.rel_vol, 1)}</span>
+    </div>`).join('')}`;
+
+  app.querySelectorAll('.cur').forEach((el) => el.classList.remove('cur'));
+  const row = app.querySelector(`tr[data-ticker="${CSS.escape(ticker)}"], th[data-ticker="${CSS.escape(ticker)}"]`);
+  if (row) { row.classList.add('cur'); row.scrollIntoView({ block: 'nearest' }); }
+
+  const list = visibleTickers();
+  const i = list.indexOf(ticker);
+  $('#chart-pos').textContent = i >= 0 ? `${i + 1} / ${list.length}` : '';
+
+  if (CHART.follow) sendToTradingView(ticker);
+}
+
+function openChart(ticker) {
+  CHART.open = true;
+  document.body.classList.add('chart-open');
+  $('#chart').hidden = false;
+  showChart(ticker || CHART.ticker || visibleTickers()[0]);
+}
+
+function closeChart() {
+  CHART.open = false;
+  document.body.classList.remove('chart-open');
+  $('#chart').hidden = true;
+  app.querySelectorAll('.cur').forEach((el) => el.classList.remove('cur'));
+}
+
+function stepChart(delta) {
+  const list = visibleTickers();
+  if (!list.length) return;
+  const i = list.indexOf(CHART.ticker);
+  const next = i < 0 ? 0 : Math.min(list.length - 1, Math.max(0, i + delta));
+  showChart(list[next]);
+}
+
+// ---------- TradingView watchlist export --------------------------------
+// TradingView imports a plain-text list of EXCHANGE:SYMBOL, comma-separated.
+// Import it once (Watchlist menu -> Import list) and its own ↑/↓ then steps
+// through these names in YOUR layout, with your indicators and drawings.
+
+function exportWatchlist() {
+  const tickers = visibleTickers();
+  if (!tickers.length) return;
+  const stamp = (D.latest_session || 'export').replace(/-/g, '');
+  download(`4pct-${S.view}-${stamp}.txt`, tickers.join(','), 'text/plain;charset=utf-8');
 }
 
 // ---------- CSV export --------------------------------------------------
@@ -1164,7 +1271,7 @@ document.addEventListener('click', (ev) => {
   }
 
   const row = ev.target.closest('[data-ticker]');
-  if (row) return openDrawer(row.dataset.ticker);
+  if (row) return CHART.open ? showChart(row.dataset.ticker) : openDrawer(row.dataset.ticker);
 });
 
 document.querySelectorAll('#tabs button').forEach((b) => {
@@ -1174,9 +1281,26 @@ document.querySelectorAll('#tabs button').forEach((b) => {
 // and abort the rest of the script, which would leave the page blank.
 const on = (sel, ev, fn) => { const el = $(sel); if (el) el.addEventListener(ev, fn); };
 on('#exportBtn', 'click', exportCsv);
+on('#wlBtn', 'click', exportWatchlist);
+on('#chartBtn', 'click', () => (CHART.open ? closeChart() : openChart()));
+on('#chart-close', 'click', closeChart);
+on('#chart-open', 'click', () => sendToTradingView(CHART.ticker));
+on('#chart-follow', 'change', (e) => { CHART.follow = e.target.checked; if (CHART.follow) sendToTradingView(CHART.ticker); });
 on('#drawer-close', 'click', () => { $('#drawer').hidden = true; });
 on('#drawer', 'click', (e) => { if (e.target.id === 'drawer') $('#drawer').hidden = true; });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#drawer').hidden = true; });
+document.addEventListener('keydown', (e) => {
+  const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName);
+  if (e.key === 'Escape') {
+    if (!$('#drawer').hidden) $('#drawer').hidden = true;
+    else if (CHART.open) closeChart();
+    return;
+  }
+  if (!CHART.open || typing) return;
+  if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); stepChart(+1); }
+  else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); stepChart(-1); }
+  else if (e.key === 'Enter' && CHART.ticker) { e.preventDefault(); sendToTradingView(CHART.ticker); }
+  else if ((e.key === 'd' || e.key === 'D') && CHART.ticker) { e.preventDefault(); openDrawer(CHART.ticker); }
+});
 
 fetch('dashboard.json?' + Date.now())
   .then((r) => r.json())
