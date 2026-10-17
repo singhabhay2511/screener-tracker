@@ -90,3 +90,4 @@ run_date,ran_on,status,row_count,fingerprint,captured_at_ist,detail
 2026-10-15,2026-10-16,skipped_no_new_session,,,"","latest NSE session is still 2026-10-15, already recorded (today is 2026-10-16)"
 2026-10-16,2026-10-16,ok,29,f0ba94fb98b591c2,"2026-10-16 20:28:53",""
 2026-10-16,2026-10-16,skipped_no_new_session,,,"","latest NSE session is still 2026-10-16, already recorded (today is 2026-10-16)"
+2026-10-16,2026-10-17,skipped_no_new_session,,,"","latest NSE session is still 2026-10-16, already recorded (today is 2026-10-17)"
