@@ -1,0 +1,34 @@
+{
+  "run_date": "2026-11-09",
+  "captured_at_ist": "2026-11-08 22:16:01",
+  "captured_on": "2026-11-08",
+  "bar_open": 1794195900,
+  "screener": {
+    "name": "4% Scan",
+    "sourceUrl": "https://www.tradingview.com/screener/0mdQWH3o/"
+  },
+  "total_count": 1,
+  "row_count": 1,
+  "fingerprint": "29efbb92947695af",
+  "suspect_stale": false,
+  "rows": [
+    {
+      "ticker": "NSE:SEIL",
+      "symbol": "SEIL",
+      "exchange": "NSE",
+      "name": "Shanti Educational Initiatives Ltd.",
+      "sector": "Commercial Services",
+      "close": 198.08,
+      "change_pct": 11.205928587469126,
+      "volume": 1680643,
+      "rel_vol": 7.029035119600535,
+      "mkt_cap": 25929050491,
+      "pe": 762.7262225644976,
+      "eps": 0.2597,
+      "value_traded": 332901765.44,
+      "volume_change": 428.8766300790494,
+      "analyst_rating": null,
+      "rank": 1
+    }
+  ]
+}
