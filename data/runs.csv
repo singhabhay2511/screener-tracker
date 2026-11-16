@@ -150,3 +150,4 @@ run_date,ran_on,status,row_count,fingerprint,captured_at_ist,detail
 2026-11-13,2026-11-15,skipped_no_new_session,,,"","latest NSE session is still 2026-11-13, already recorded (today is 2026-11-15)"
 2026-11-13,2026-11-15,skipped_no_new_session,,,"","latest NSE session is still 2026-11-13, already recorded (today is 2026-11-15)"
 2026-11-13,2026-11-16,skipped_no_new_session,,,"","latest NSE session is still 2026-11-13, already recorded (today is 2026-11-16)"
+2026-11-16,2026-11-17,ok,25,ab6326b38524ed74,"2026-11-17 02:08:53","captured on 2026-11-17"
